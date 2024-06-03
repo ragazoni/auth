@@ -1,8 +1,6 @@
 package models
 
 import (
-	"auth/internal/errors"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,31 +14,6 @@ type Customer struct {
 	Password  string             `json:"password" bson:"password,omitempty"`
 	Type      string             `json:"type" bson:"type,omitempty"`
 	IsAdmin   bool               `json:"isadmin" bson:"isadmin,omitempty"`
-}
-
-func (c Customer) Validate() error {
-	errList := []string{}
-	if c.Name == "" {
-		errList = append(errList, "nome completo")
-	}
-	if c.CPF == "" {
-		errList = append(errList, "documento")
-	}
-	if c.BirthDate == "" {
-		errList = append(errList, "data nascimento")
-	}
-	if c.Email == "" {
-		errList = append(errList, "email")
-	}
-	if c.Password == "" {
-		errList = append(errList, "senha")
-	}
-	if len(errList) > 0 {
-		return errors.NewRequiredFieldsErrorList(errList)
-
-	}
-
-	return nil
 }
 
 func (c *Customer) HashPassword() error {

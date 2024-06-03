@@ -13,5 +13,5 @@ func SetRouters(r fiber.Router) {
 	users.Delete("/:id", deleteUser)
 	users.Get("/email/:email", findByEmail)
 	users.Get("/check/:email", checkAdmin)
-
+	users.Post("/logout", logout)
 }

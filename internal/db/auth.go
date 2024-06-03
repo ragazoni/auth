@@ -26,7 +26,6 @@ func FindUserByEmail(collection string, email any) (*models.Customer, error) {
 		return nil, err
 	}
 
-	// Converte o ID para primitive.ObjectID
 	id, err := primitive.ObjectIDFromHex(user.ID.Hex())
 	if err != nil {
 		return nil, err

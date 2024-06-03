@@ -3,18 +3,13 @@ package service
 import (
 	"auth/internal/db"
 	"auth/internal/models"
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v3"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var userCollection *mongo.Collection
 
 func addUser(c fiber.Ctx) error {
 	//body := new(models.Customer)
@@ -119,41 +114,50 @@ func GenerateJWT(email string) (string, error) {
 }
 
 func loginUser(c fiber.Ctx) error {
-	//	body := new(models.Customer)
-	var data map[string]string
+	data := new(models.Customer)
+	//var data map[string]string
 
 	if err := c.Bind().Body(&data); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON",
 		})
 	}
-	var user models.Customer
-	err := userCollection.FindOne(context.Background(), bson.M{"cpf": data["cpf"]}).Decode(&user)
+	//var user models.Customer
+	user, err := db.FindByEmail("users", data.Email)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Invalid credentials",
 		})
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data["password"])); err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "Invalid credentials",
-		})
+	if user == nil || !user.CheckPassword(data.Password) {
+		return c.Status(http.StatusUnauthorized).JSON("invalid email or password")
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": user.ID.Hex(),
-		"exp":    time.Now().Add(time.Hour * 72).Unix(),
+	token, err := GenerateJWT(user.Email)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON("could not generate token")
+	}
+
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"user":  user,
+		"token": token,
 	})
+}
 
-	tokenString, err := token.SignedString([]byte("secret"))
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Could not login",
+func logout(c fiber.Ctx) error {
+	token := c.Get("Authorization")
+	if token == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Token is required",
 		})
 	}
+	models.InvalidTokens.Lock()
+	models.InvalidTokens.Tokens[token] = true
+	models.InvalidTokens.Unlock()
 
 	return c.JSON(fiber.Map{
-		"token": tokenString,
+		"message": "Logout successful",
 	})
+
 }
